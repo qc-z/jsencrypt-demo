@@ -1,55 +1,28 @@
 import CryptoJS from 'crypto-js'
-let iv = CryptoJS.enc.Hex.parse('30313233343536373839414243444546')
-let key = 'TYX1UZTXUSDR1PGX'
-console.log(key)
-key = CryptoJS.enc.Hex.parse(key)
+import SparkMD5 from 'spark-md5'
 
-export function getKey(n = 16) {
-  var chars = [
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z'
-  ]
+let iv = CryptoJS.enc.Hex.parse('30313233343536373839414243444546')
+let key = getKey()
+console.log(key)
+/**
+ * @description: 随机生成秘钥
+ * @param {*} n
+ * @return {*}
+ */
+export function getKey(n = 64) {
+  var chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
   let res = ''
   for (let i = 0; i < n; i++) {
-    const id = Math.ceil(Math.random() * 35)
+    const id = Math.floor(Math.random() * 10)
     res += chars[id]
   }
   return res
 }
+/**
+ * @description: 将字符串转化为utf-8字节
+ * @param {*} str
+ * @return {*}
+ */
 export function ToUTF8(str) {
   var result = new Array()
   var k = 0
@@ -68,6 +41,11 @@ export function ToUTF8(str) {
   }
   return result
 }
+/**
+ * @description: 将 byte 字节转化成十六进制
+ * @param {*} arr
+ * @return {*}
+ */
 export function Bytes2Str(arr) {
   var str = ''
 
@@ -83,6 +61,11 @@ export function Bytes2Str(arr) {
 
   return str
 }
+/**
+ * @description: 监测是否base64格式化
+ * @param {*} str
+ * @return {*} Boolean
+ */
 export function isBase64(str) {
   if (str === '' || str.trim() === '') {
     return false
@@ -93,36 +76,43 @@ export function isBase64(str) {
     return false
   }
 }
+/**
+ * @description: 加密
+ * @param {base64} content
+ * @return {*}
+ */
 export function encrypted(content) {
-  const wordArray = CryptoJS.lib.WordArray.create(content)
-  // Convert: ArrayBuffer -> WordArray 把文件转为WordArray
-  let encrypted = CryptoJS.AES.encrypt(wordArray, key, {
+  const enc = CryptoJS.AES.encrypt(content, CryptoJS.enc.Hex.parse(key), {
     iv: iv,
     mode: CryptoJS.mode.CBC,
     padding: CryptoJS.pad.Pkcs7
   })
-  console.log(encrypted)
-
-  encrypted = encrypted.ciphertext.toString()
-  console.log(encrypted)
-  // Encryption: I: WordArray -> O: -> Base64 encoded string (OpenSSL-format)
-  return new Blob([encrypted])
+  return enc.ciphertext.toString()
 }
+/**
+ * @description: 解密
+ * @param {base64} content
+ * @return {*}
+ */
 export function decryed(content) {
-  const decrypted = CryptoJS.AES.decrypt(content, key, {
+  const decrypted = CryptoJS.AES.decrypt(content, CryptoJS.enc.Hex.parse(key), {
     iv: iv,
     mode: CryptoJS.mode.CBC,
     padding: CryptoJS.pad.Pkcs7
   })
+
   // Decryption: I: Base64 encoded string (OpenSSL-format) -> O: WordArray
   // const typedArray = convertWordArrayToUint8Array(decrypted)
   const typedArray = CryptoJS.enc.Utf8.stringify(decrypted)
   // Convert: WordArray -> typed array
+  console.log(typedArray)
 
   return new Blob([typedArray])
 }
 /**
- * 把WordArray转为Uint8Array
+ * @description: 把WordArray转为Uint8Array
+ * @param {*} wordArray
+ * @return {*}
  */
 export function convertWordArrayToUint8Array(wordArray) {
   const arrayOfWords = Object.prototype.hasOwnProperty.call(wordArray, 'words')
@@ -144,12 +134,44 @@ export function convertWordArrayToUint8Array(wordArray) {
   }
   return uInt8Array
 }
-export function download(fileEnc, name) {
+/**
+ * @description:
+ * @param {Blob} blob
+ * @param {*} name
+ * @return {*}
+ */
+export function download(blob, filename) {
+  const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  const url = window.URL.createObjectURL(fileEnc)
-  const filename = name
+  a.style.display = 'none'
   a.href = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
-  window.URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+/**
+ * @description: file文件转为base64
+ * @param {Blob} blob
+ * @param {function} cb
+ * @return {*}
+ */
+export function blobToDataURL(blob, cb) {
+  let reader = new FileReader()
+  reader.onload = function (evt) {
+    let base64 = evt.target.result
+    cb(base64)
+  }
+  reader.readAsDataURL(blob)
+}
+export function getMd5(file) {
+  return new Promise(function (resolve) {
+    const fileReader = new FileReader()
+    fileReader.readAsBinaryString(file)
+    fileReader.onload = (e) => {
+      const md5 = SparkMD5.hashBinary(e.target.result)
+      resolve(md5)
+    }
+  })
 }

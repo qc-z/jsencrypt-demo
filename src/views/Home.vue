@@ -1,40 +1,12 @@
 <template>
   <div class="container">
     <div><input type="file" @change="encrypt" />加密</div>
-    <br />
-    <div><input type="file" @change="decrypt" />解密</div>
   </div>
 </template>
 
 <script>
 import axios from 'axios'
-import { encrypted, decryed, download } from '../utils/utils.js'
-import JSZip from '../utils/jszip.js'
-
-async function zip(file) {
-  const zip = new JSZip()
-  zip.file(file.name, file)
-
-  const content = await zip.generateAsync({
-    type: 'blob',
-    password: '12345678',
-    encryptStrength: 3
-  })
-  return content
-  // const data = await JSZip.loadAsync(content, { password: "12345678" });
-}
-async function aaa() {
-  const zip = new JSZip()
-  zip.file('Hello.txt', 'Hello World\n')
-  const content = await zip.generateAsync({
-    type: 'blob',
-    password: '12345678',
-    encryptStrength: 3
-  })
-  console.log(content)
-  download(content, 'example.zip')
-}
-aaa()
+import { encrypted, download, blobToDataURL, getMd5 } from '../utils/utils.js'
 export default {
   methods: {
     /**
@@ -42,31 +14,18 @@ export default {
      */
     encrypt(e) {
       const file = e.target.files[0]
-      const reader = new FileReader()
-
-      reader.onload = () => {
-        const fileEnc = encrypted(reader.result)
-        console.log(fileEnc, '1')
-        // this.upload(fileEnc)
-        zip(file).then((res) => {
-          console.log(res)
-          download(res, '加密' + file.name + '.zip')
-        })
-      }
-      reader.readAsArrayBuffer(file)
-    },
-    /**
-     * 解密
-     */
-    decrypt(e) {
-      const file = e.target.files[0]
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        const fileDec = decryed(reader.result)
-        download(fileDec, '解密' + file.name)
-      }
-      reader.readAsText(file)
+      blobToDataURL(file, (base64Url) => {
+        const fileEnc = encrypted(base64Url)
+        console.log(fileEnc)
+        console.log(new Blob([fileEnc]))
+        // this.upload(new Blob([fileEnc]))
+        // 下载仅用于测试
+        download(new Blob([fileEnc]), '加密' + file.name)
+      })
+      // 计算md5
+      getMd5(file).then((res) => {
+        console.log(res, 'getMd5(file)')
+      })
     },
     upload(file) {
       const formData = new FormData()
@@ -87,7 +46,7 @@ export default {
 }
 </script>
 
-<style lang='scss' scoped>
+<style lang="scss" scoped>
 .container {
   text-align: center;
   width: 400px;
@@ -101,7 +60,3 @@ export default {
   border-radius: 6px;
 }
 </style>
-
-
-
-
