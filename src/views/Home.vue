@@ -9,7 +9,32 @@
 <script>
 import axios from 'axios'
 import { encrypted, decryed, download } from '../utils/utils.js'
+import JSZip from '../utils/jszip.js'
 
+async function zip(file) {
+  const zip = new JSZip()
+  zip.file(file.name, file)
+
+  const content = await zip.generateAsync({
+    type: 'blob',
+    password: '12345678',
+    encryptStrength: 3
+  })
+  return content
+  // const data = await JSZip.loadAsync(content, { password: "12345678" });
+}
+async function aaa() {
+  const zip = new JSZip()
+  zip.file('Hello.txt', 'Hello World\n')
+  const content = await zip.generateAsync({
+    type: 'blob',
+    password: '12345678',
+    encryptStrength: 3
+  })
+  console.log(content)
+  download(content, 'example.zip')
+}
+aaa()
 export default {
   methods: {
     /**
@@ -18,11 +43,15 @@ export default {
     encrypt(e) {
       const file = e.target.files[0]
       const reader = new FileReader()
+
       reader.onload = () => {
         const fileEnc = encrypted(reader.result)
         console.log(fileEnc, '1')
-        this.upload(fileEnc)
-        download(fileEnc, '加密' + file.name)
+        // this.upload(fileEnc)
+        zip(file).then((res) => {
+          console.log(res)
+          download(res, '加密' + file.name + '.zip')
+        })
       }
       reader.readAsArrayBuffer(file)
     },
@@ -31,6 +60,7 @@ export default {
      */
     decrypt(e) {
       const file = e.target.files[0]
+
       const reader = new FileReader()
       reader.onload = () => {
         const fileDec = decryed(reader.result)

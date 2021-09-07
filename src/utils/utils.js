@@ -103,7 +103,7 @@ export function encrypted(content) {
   })
   console.log(encrypted)
 
-  encrypted = encrypted.toString()
+  encrypted = encrypted.ciphertext.toString()
   console.log(encrypted)
   // Encryption: I: WordArray -> O: -> Base64 encoded string (OpenSSL-format)
   return new Blob([encrypted])
@@ -115,7 +115,8 @@ export function decryed(content) {
     padding: CryptoJS.pad.Pkcs7
   })
   // Decryption: I: Base64 encoded string (OpenSSL-format) -> O: WordArray
-  const typedArray = convertWordArrayToUint8Array(decrypted)
+  // const typedArray = convertWordArrayToUint8Array(decrypted)
+  const typedArray = CryptoJS.enc.Utf8.stringify(decrypted)
   // Convert: WordArray -> typed array
 
   return new Blob([typedArray])
