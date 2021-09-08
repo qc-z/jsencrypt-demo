@@ -1,15 +1,26 @@
 import CryptoJS from 'crypto-js'
 import SparkMD5 from 'spark-md5'
+import { JSEncrypt } from 'jsencrypt'
+// 公钥
+const publicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnxbl4mcx0VvSn8KyfDRj
+jBXFQdVWVMd97fnGLf/faC0uL2YMhgJSY2lzT65Njqsaroi7ReSILr6BkgQxW2KO
+3L8pU9jsUKyu/v+fOAR/NvmNA7RON7+GYbdh0IwnOIAq5UQmLKvoYaaJVAgaWP8D
+pEgEDJE0QnPT2mkG224NMVXNQVzg+wTRFoOisHc097UljN90lg/WWPin92PSIcLM
+w9nn0sHtYlDZu3PhpG+FAxacRv5puOZO+hu+G9sYCnGcNdqLTJDS3+iUZPVi4TrP
+aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
++wIDAQAB
+-----END PUBLIC KEY-----
+`
+// 偏移量
+const iv = CryptoJS.enc.Hex.parse('30313233343536373839414243444546')
 
-let iv = CryptoJS.enc.Hex.parse('30313233343536373839414243444546')
-let key = getKey()
-console.log(key)
 /**
  * @description: 随机生成秘钥
  * @param {*} n
  * @return {*}
  */
-export function getKey(n = 64) {
+function getKey(n = 64) {
   var chars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
   let res = ''
   for (let i = 0; i < n; i++) {
@@ -17,49 +28,6 @@ export function getKey(n = 64) {
     res += chars[id]
   }
   return res
-}
-/**
- * @description: 将字符串转化为utf-8字节
- * @param {*} str
- * @return {*}
- */
-export function ToUTF8(str) {
-  var result = new Array()
-  var k = 0
-  for (var i = 0; i < str.length; i++) {
-    var j = encodeURI(str[i])
-    if (j.length === 1) {
-      // 未转换的字符
-      result[k++] = j.charCodeAt(0)
-    } else {
-      // 转换成%XX形式的字符
-      var bytes = j.split('%')
-      for (var l = 1; l < bytes.length; l++) {
-        result[k++] = parseInt('0x' + bytes[l])
-      }
-    }
-  }
-  return result
-}
-/**
- * @description: 将 byte 字节转化成十六进制
- * @param {*} arr
- * @return {*}
- */
-export function Bytes2Str(arr) {
-  var str = ''
-
-  for (var i = 0; i < arr.length; i++) {
-    var tmp = arr[i].toString(16)
-
-    if (tmp.length === 1) {
-      tmp = '0' + tmp
-    }
-
-    str += tmp
-  }
-
-  return str
 }
 /**
  * @description: 监测是否base64格式化
@@ -81,7 +49,7 @@ export function isBase64(str) {
  * @param {base64} content
  * @return {*}
  */
-export function encrypted(content) {
+export function encrypted(content, key) {
   const enc = CryptoJS.AES.encrypt(content, CryptoJS.enc.Hex.parse(key), {
     iv: iv,
     mode: CryptoJS.mode.CBC,
@@ -94,7 +62,7 @@ export function encrypted(content) {
  * @param {base64} content
  * @return {*}
  */
-export function decryed(content) {
+export function decryed(content, key) {
   const decrypted = CryptoJS.AES.decrypt(content, CryptoJS.enc.Hex.parse(key), {
     iv: iv,
     mode: CryptoJS.mode.CBC,
@@ -105,7 +73,6 @@ export function decryed(content) {
   // const typedArray = convertWordArrayToUint8Array(decrypted)
   const typedArray = CryptoJS.enc.Utf8.stringify(decrypted)
   // Convert: WordArray -> typed array
-  console.log(typedArray)
 
   return new Blob([typedArray])
 }
@@ -134,6 +101,38 @@ export function convertWordArrayToUint8Array(wordArray) {
   }
   return uInt8Array
 }
+
+/**
+ * @description: file文件转为base64
+ * @param {Blob} blob
+ * @param {function} cb
+ * @return {*}
+ */
+function blobToDataURL(blob, cb) {
+  let reader = new FileReader()
+  reader.onload = function (evt) {
+    let base64 = evt.target.result
+    cb(base64)
+  }
+  reader.readAsDataURL(blob)
+}
+function getMd5(file) {
+  return new Promise(function (resolve) {
+    const fileReader = new FileReader()
+    fileReader.readAsBinaryString(file)
+    fileReader.onload = (e) => {
+      const md5 = SparkMD5.hashBinary(e.target.result)
+      resolve(md5)
+    }
+  })
+}
+function handlerRSA(key, publicKey) {
+  // 使用公钥加密
+  var encrypt = new JSEncrypt()
+  encrypt.setPublicKey(publicKey)
+  var encrypted = encrypt.encrypt(key)
+  return encrypted
+}
 /**
  * @description:
  * @param {Blob} blob
@@ -152,26 +151,29 @@ export function download(blob, filename) {
   URL.revokeObjectURL(url)
 }
 /**
- * @description: file文件转为base64
- * @param {Blob} blob
- * @param {function} cb
- * @return {*}
+ * @description: 获取上传加密文件所需要的参数
+ * @param {*} file
+ * @param {*} type
+ * @return {Object | formData}
  */
-export function blobToDataURL(blob, cb) {
-  let reader = new FileReader()
-  reader.onload = function (evt) {
-    let base64 = evt.target.result
-    cb(base64)
-  }
-  reader.readAsDataURL(blob)
-}
-export function getMd5(file) {
+export function handlerParams(file, type) {
   return new Promise(function (resolve) {
-    const fileReader = new FileReader()
-    fileReader.readAsBinaryString(file)
-    fileReader.onload = (e) => {
-      const md5 = SparkMD5.hashBinary(e.target.result)
-      resolve(md5)
-    }
+    getMd5(file).then((md5) => {
+      const key = handlerRSA(getKey(), publicKey)
+      blobToDataURL(file, (base64Url) => {
+        const fileEnc = encrypted(base64Url, key)
+        const params = {
+          key,
+          md5,
+          name: file.name,
+          file: new Blob([fileEnc])
+        }
+        const formData = new FormData()
+        for (const key in params) {
+          formData.append(key, params[key])
+        }
+        resolve(type === 'formData' ? formData : params)
+      })
+    })
   })
 }

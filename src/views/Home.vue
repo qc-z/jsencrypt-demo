@@ -5,8 +5,8 @@
 </template>
 
 <script>
-import axios from 'axios'
-import { encrypted, download, blobToDataURL, getMd5 } from '../utils/utils.js'
+import { handlerParams } from '../utils/utils.js'
+
 export default {
   methods: {
     /**
@@ -14,33 +14,22 @@ export default {
      */
     encrypt(e) {
       const file = e.target.files[0]
-      blobToDataURL(file, (base64Url) => {
-        const fileEnc = encrypted(base64Url)
-        console.log(fileEnc)
-        console.log(new Blob([fileEnc]))
-        // this.upload(new Blob([fileEnc]))
-        // 下载仅用于测试
-        download(new Blob([fileEnc]), '加密' + file.name)
-      })
-      // 计算md5
-      getMd5(file).then((res) => {
-        console.log(res, 'getMd5(file)')
+      // 第二个参数不传默认返回json，传formData返回formData
+      handlerParams(file, 'formData').then((res) => {
+        this.upload(res)
       })
     },
-    upload(file) {
-      const formData = new FormData()
-      formData.append('file', file)
-      axios({
-        method: 'post',
-        url: 'http://localhost:3000/post',
-        data: formData
+    /**
+     * 业务
+     */
+    async upload(params) {
+      const source = await fetch('http://192.168.37.1:8890/yhkc/upData', {
+        method: 'POST',
+        body: params
       })
-        .then((res) => {
-          console.log(res)
-        })
-        .catch((err) => {
-          console.log(err)
-        })
+      const res = await source.json()
+      console.log(res)
+      if (res.code === 200) alert(res.msg)
     }
   }
 }
