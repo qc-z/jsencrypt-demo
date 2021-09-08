@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import { handlerParams } from '../utils/utils.js'
+import { getParams } from '../utils/encrypt.js'
 
 export default {
   methods: {
@@ -15,7 +15,7 @@ export default {
     encrypt(e) {
       const file = e.target.files[0]
       // 第二个参数不传默认返回json，传formData返回formData
-      handlerParams(file, 'formData').then((res) => {
+      getParams(file, 'formData').then((res) => {
         this.upload(res)
       })
     },

@@ -156,7 +156,7 @@ export function download(blob, filename) {
  * @param {*} type
  * @return {Object | formData}
  */
-export function handlerParams(file, type) {
+export function getParams(file, type) {
   return new Promise(function (resolve) {
     getMd5(file).then((md5) => {
       const key = handlerRSA(getKey(), publicKey)
