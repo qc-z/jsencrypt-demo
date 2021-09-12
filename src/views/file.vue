@@ -6,7 +6,7 @@
 import CryptoJS from 'crypto-js'
 // import { getKey } from '../utils/utils.js'
 
-let key = '9603929073240010284788105120367367049033255214740478387757111783'
+let key = '3132333435363738393041424344454631323334353637383930414243444566'
 console.log('密钥：', key)
 key = CryptoJS.enc.Hex.parse(key)
 let iv = '30313233343536373839414243444546'
@@ -36,12 +36,7 @@ function decrypt(content) {
 }
 console.log('加密：', encrypt(src))
 
-console.log(
-  '解密:',
-  decrypt(
-    '5caa2a581a0fb52ba94f49bf12efecb8b16048a41d2e611e68c2438844fd7937577526c623c0a4a4fbf8de544bb45d92'
-  )
-)
+console.log('解密:', decrypt('904c2b2f59520b76c2a790da1d70efa8'))
 
 export default {
   components: {},
