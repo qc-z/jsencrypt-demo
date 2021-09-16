@@ -27,40 +27,49 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
   handlerParams(file, type) {
     console.time('历时')
     const that = this
-    return new Promise(function (resolve) {
-      that.getMd5(file).then((md5) => {
-        const test = that.getKey()
-        const key = that.handlerRSA(test, that.publicKey)
-        that.blobToDataURL(file, (base64Url) => {
-          // 取中间数
-          const half = Math.floor(base64Url.length / 2)
-          let result = []
-          let length = half < 1024 ? half : 1024
-          // 文件大于等于2048 截取值拿中间数，否者拿1024
-          const start = base64Url.slice(0, length)
-          const end = base64Url.slice(-length)
-          const center = base64Url.slice(length, base64Url.length - length)
-          result = [start, center, end]
-          that.encrypted(result, test, that).then((fileEnc) => {
-            console.timeEnd('历时')
-            console.log('文件原始大小: ' + (file.size / (1024 * 1024)).toFixed(2) + 'MB')
-            console.log(
-              '文件加密后大小: ' + ((fileEnc.file2.size + 2048) / (1024 * 1024)).toFixed(2) + 'MB'
-            )
 
-            const params = {
-              key,
-              md5,
-              name: file.name,
-              ...fileEnc
-            }
-            const formData = new FormData()
-            for (const key in params) {
-              formData.append(key, params[key])
-            }
-            resolve(type === 'formData' ? formData : params)
-          })
-        })
+    return new Promise(function (resolve) {
+      // that.getMd5(file).then((md5) => {
+      let md5
+      ;(async () => {
+        md5 = await that.getMd5(file)
+      })()
+
+      const test = that.getKey()
+      const key = that.handlerRSA(test, that.publicKey)
+      that.blobToDataURL(file, async (base64Url) => {
+        // 取中间数
+        const half = Math.floor(base64Url.length / 2)
+        let result = []
+        let length = half < 1024 ? half : 1024
+        // 文件大于等于2048 截取值拿中间数，否者拿1024
+        const start = base64Url.slice(0, length)
+        const end = base64Url.slice(-length)
+        const center = base64Url.slice(length, base64Url.length - length)
+        result = [start, center, end]
+
+        const fileEnc = await that.encrypted(result, test, that)
+
+        // that.encrypted(result, test, that).then((fileEnc) => {
+        console.timeEnd('历时')
+        console.log('文件原始大小: ' + (file.size / (1024 * 1024)).toFixed(2) + 'MB')
+        console.log(
+          '文件加密后大小: ' + ((fileEnc.file2.size + 2048) / (1024 * 1024)).toFixed(2) + 'MB'
+        )
+
+        const params = {
+          key,
+          md5,
+          name: file.name,
+          ...fileEnc
+        }
+        const formData = new FormData()
+        for (const key in params) {
+          formData.append(key, params[key])
+        }
+        resolve(type === 'formData' ? formData : params)
+        // })
+        // })
       })
     })
   }
@@ -83,7 +92,7 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
    * @param {base64} content
    * @return {*}
    */
-  encrypted(content, key, that) {
+  async encrypted(content, key, that) {
     return new Promise(function (resolve) {
       const start = CryptoJS.AES.encrypt(content[0], CryptoJS.enc.Hex.parse(key), {
         iv: that.iv,
@@ -120,7 +129,7 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
     // readAsDataURL
     reader.readAsDataURL(blob)
   }
-  getMd5(file) {
+  async getMd5(file) {
     return new Promise(function (resolve) {
       const fileReader = new FileReader()
       fileReader.readAsBinaryString(file)
