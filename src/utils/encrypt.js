@@ -25,24 +25,41 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
    * @return {Object | formData}
    */
   handlerParams(file, type) {
+    console.time('历时')
     const that = this
     return new Promise(function (resolve) {
       that.getMd5(file).then((md5) => {
         const test = that.getKey()
         const key = that.handlerRSA(test, that.publicKey)
         that.blobToDataURL(file, (base64Url) => {
-          const fileEnc = that.encrypted(base64Url, test)
-          const params = {
-            key,
-            md5,
-            name: file.name,
-            file: new Blob([fileEnc])
-          }
-          const formData = new FormData()
-          for (const key in params) {
-            formData.append(key, params[key])
-          }
-          resolve(type === 'formData' ? formData : params)
+          // 取中间数
+          const half = Math.floor(base64Url.length / 2)
+          let result = []
+          let length = half < 1024 ? half : 1024
+          // 文件大于等于2048 截取值拿中间数，否者拿1024
+          const start = base64Url.slice(0, length)
+          const end = base64Url.slice(-length)
+          const center = base64Url.slice(length, base64Url.length - length)
+          result = [start, center, end]
+          that.encrypted(result, test, that).then((fileEnc) => {
+            console.timeEnd('历时')
+            console.log('文件原始大小: ' + (file.size / (1024 * 1024)).toFixed(2) + 'MB')
+            console.log(
+              '文件加密后大小: ' + ((fileEnc.file2.size + 2048) / (1024 * 1024)).toFixed(2) + 'MB'
+            )
+
+            const params = {
+              key,
+              md5,
+              name: file.name,
+              ...fileEnc
+            }
+            const formData = new FormData()
+            for (const key in params) {
+              formData.append(key, params[key])
+            }
+            resolve(type === 'formData' ? formData : params)
+          })
         })
       })
     })
@@ -62,76 +79,29 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
     return str
   }
   /**
-   * @description: 监测是否base64格式化
-   * @param {*} str
-   * @return {*} Boolean
-   */
-  isBase64(str) {
-    if (str === '' || str.trim() === '') {
-      return false
-    }
-    try {
-      return btoa(atob(str)) === str
-    } catch (err) {
-      return false
-    }
-  }
-  /**
    * @description: 加密
    * @param {base64} content
    * @return {*}
    */
-  encrypted(content, key) {
-    const enc = CryptoJS.AES.encrypt(content, CryptoJS.enc.Hex.parse(key), {
-      iv: this.iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7
+  encrypted(content, key, that) {
+    return new Promise(function (resolve) {
+      const start = CryptoJS.AES.encrypt(content[0], CryptoJS.enc.Hex.parse(key), {
+        iv: that.iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      }).ciphertext.toString()
+      const end = CryptoJS.AES.encrypt(content[2], CryptoJS.enc.Hex.parse(key), {
+        iv: that.iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      }).ciphertext.toString()
+      const result = {
+        file1: new Blob([start]),
+        file2: new Blob([content[1]]),
+        file3: new Blob([end])
+      }
+      resolve(result)
     })
-    return enc.ciphertext.toString()
-  }
-  /**
-   * @description: 解密
-   * @param {base64} content
-   * @return {*}
-   */
-  decryed(content, key) {
-    const decrypted = CryptoJS.AES.decrypt(content, CryptoJS.enc.Hex.parse(key), {
-      iv: this.iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7
-    })
-
-    // Decryption: I: Base64 encoded string (OpenSSL-format) -> O: WordArray
-    // const typedArray = convertWordArrayToUint8Array(decrypted)
-    const typedArray = CryptoJS.enc.Utf8.stringify(decrypted)
-    // Convert: WordArray -> typed array
-
-    return new Blob([typedArray])
-  }
-  /**
-   * @description: 把WordArray转为Uint8Array
-   * @param {*} wordArray
-   * @return {*}
-   */
-  convertWordArrayToUint8Array(wordArray) {
-    const arrayOfWords = Object.prototype.hasOwnProperty.call(wordArray, 'words')
-      ? wordArray.words
-      : []
-    const length = Object.prototype.hasOwnProperty.call(wordArray, 'sigBytes')
-      ? wordArray.sigBytes
-      : arrayOfWords.length * 4
-    const uInt8Array = new Uint8Array(length)
-    let index = 0,
-      word,
-      i
-    for (i = 0; i < length; i++) {
-      word = arrayOfWords[i]
-      uInt8Array[index++] = word >> 24
-      uInt8Array[index++] = (word >> 16) & 0xff
-      uInt8Array[index++] = (word >> 8) & 0xff
-      uInt8Array[index++] = word & 0xff
-    }
-    return uInt8Array
   }
 
   /**
@@ -146,6 +116,8 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
       let base64 = evt.target.result
       cb(base64)
     }
+    // readAsText
+    // readAsDataURL
     reader.readAsDataURL(blob)
   }
   getMd5(file) {
@@ -159,7 +131,6 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
     })
   }
   handlerRSA(key, publicKey) {
-    console.log(key, 'KEY')
     // 使用公钥加密
     var encrypt = new JSEncrypt()
     encrypt.setPublicKey(publicKey)
@@ -182,6 +153,9 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+  range(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) + min)
   }
 }
 export default Encrypte

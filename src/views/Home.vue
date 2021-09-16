@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import Encrypte from '../utils/utils.js'
+import Encrypte from '../utils/encrypt.js'
 const encrypte = new Encrypte()
 export default {
   methods: {
@@ -17,7 +17,6 @@ export default {
       // 第二个参数不传默认返回json，传formData返回formData
       encrypte.handlerParams(file).then((res) => {
         console.log(res)
-
         // this.upload(res)
       })
     },
