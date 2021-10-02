@@ -3,7 +3,9 @@ import SparkMD5 from 'spark-md5'
 import { JSEncrypt } from 'jsencrypt'
 
 class Encrypte {
-  constructor() {
+  constructor(options) {
+    this._type = options.type ?? 'formData'
+    this._params = options?.params
     // 公钥
     this.publicKey = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnxbl4mcx0VvSn8KyfDRj
@@ -24,7 +26,7 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
    * @param {*} type
    * @return {Object | formData}
    */
-  handlerParams(file, type) {
+  handlerParams(file) {
     console.time('历时')
     const that = this
 
@@ -61,13 +63,14 @@ aQ85k6rr/fYG2GG7bYZ/hU1n+QL80NZQfHJ9CSVFLY8Rk2Bx7bf9McJxzyIJtUaE
           key,
           md5,
           name: file.name,
-          ...fileEnc
+          ...fileEnc,
+          ...that._params
         }
         const formData = new FormData()
         for (const key in params) {
           formData.append(key, params[key])
         }
-        resolve(type === 'formData' ? formData : params)
+        resolve(that._type === 'formData' ? formData : params)
         // })
         // })
       })

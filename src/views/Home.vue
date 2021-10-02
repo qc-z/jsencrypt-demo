@@ -6,17 +6,22 @@
 
 <script>
 import Encrypte from '../utils/encrypt.js'
-const encrypte = new Encrypte()
 export default {
   methods: {
     /**
      * 加密
      */
     encrypt(e) {
+      const encrypte = new Encrypte()
+
       const file = e.target.files[0]
       // 第二个参数不传默认返回json，传formData返回formData
       encrypte.handlerParams(file).then((res) => {
         console.log(res)
+        for (const key of res.keys()) {
+          console.log(key + ' : ' + res.get(key))
+          console.log()
+        }
         // this.upload(res)
       })
     },
